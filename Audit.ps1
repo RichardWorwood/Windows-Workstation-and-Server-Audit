@@ -1,18 +1,20 @@
 #####################################################
-#				                    #
+#				                    				#
 #    Audit script V3 by Alan Renouf - Virtu-Al      #
 #    Blog: http://virtu-al.net/	                    #
-#	     		                            #
+#	     		                           		 	#
 #    Usage: Audit.ps1 'pathtolistofservers'         #
-# 			                            #
+# 			                            			#
 #    The file is optional and needs to be a 	    #
-#	 plain text list of computers to be audited #
-#	 one on each line, if no list is specified  #
-#	 the local machine will be audited.         # 
+#	 plain text list of computers to be audited 	#
+#	 one on each line, if no list is specified  	#
+#	 the local machine will be audited.         	# 
 #                                                   #
 #####################################################
+#    Modified by Richard Worwood to include debug   #
+#####################################################
 
-param( [string] $auditlist)
+param( [string] $auditlist, [Boolean] $debug)
 
 Function Get-CustomHTML ($Header){
 $Report = @"
@@ -144,6 +146,7 @@ Return $Report
 if ($auditlist -eq ""){
 	Write-Host "No list specified, using $env:computername"
 	$targets = $env:computername
+	$debug = true
 }
 else
 {
@@ -399,11 +402,11 @@ Write-Output "Collating Detail for $Target"
 			$MyReport += Get-HTMLTable ($Services)
 		$MyReport += Get-CustomHeaderClose
 		$MyReport += Get-CustomHeader "2" "Regional Settings"
-			$MyReport += Get-HTMLDetail "Time Zone" ($TimeZone.Description)
-			$MyReport += Get-HTMLDetail "Country Code" ($OperatingSystems.Countrycode)
-			$MyReport += Get-HTMLDetail "Locale" ($OperatingSystems.Locale)
-			$MyReport += Get-HTMLDetail "Operating System Language" ($OperatingSystems.OSLanguage)
-			$MyReport += Get-HTMLDetail "Keyboard Layout" ($keyb)
+		$MyReport += Get-HTMLDetail "Time Zone" ($TimeZone.Description)
+		$MyReport += Get-HTMLDetail "Country Code" ($OperatingSystems.Countrycode)
+		$MyReport += Get-HTMLDetail "Locale" ($OperatingSystems.Locale)
+		$MyReport += Get-HTMLDetail "Operating System Language" ($OperatingSystems.OSLanguage)
+		$MyReport += Get-HTMLDetail "Keyboard Layout" ($keyb)
 		$MyReport += Get-CustomHeaderClose
 		Write-Output "..Event Log Settings"
 		$LogFiles = Get-WmiObject -ComputerName $Target Win32_NTEventLogFile
@@ -414,9 +417,9 @@ Write-Output "Collating Detail for $Target"
 				$Details = "" | Select "Log Name", "Overwrite Outdated Records", "Maximum Size (KB)", "Current Size (KB)"
 				$Details."Log Name" = $Log.LogFileName
 				If ($Log.OverWriteOutdated -lt 0)
-					{
-						$Details."Overwrite Outdated Records" = "Never"
-					}
+				{
+					$Details."Overwrite Outdated Records" = "Never"
+				}
 				if ($Log.OverWriteOutdated -eq 0)
 				{
 					$Details."Overwrite Outdated Records" = "As needed"
@@ -438,13 +441,13 @@ Write-Output "Collating Detail for $Target"
 			$WmidtQueryDT = [System.Management.ManagementDateTimeConverter]::ToDmtfDateTime([DateTime]::Now.AddDays(-14))
 			$LoggedErrors = Get-WmiObject -computer $Target -query ("Select * from Win32_NTLogEvent Where Type='Error' and TimeWritten >='" + $WmidtQueryDT + "'")
 			$MyReport += Get-CustomHeader "2" "ERROR Entries"
-				$MyReport += Get-HTMLTable ($LoggedErrors | Select EventCode, SourceName, @{N="Time";E={$_.ConvertToDateTime($_.TimeWritten)}}, LogFile, Message)
+			$MyReport += Get-HTMLTable ($LoggedErrors | Select EventCode, SourceName, @{N="Time";E={$_.ConvertToDateTime($_.TimeWritten)}}, LogFile, Message)
 			$MyReport += Get-CustomHeaderClose
 			Write-Output "..Event Log Warnings"
 			$WmidtQueryDT = [System.Management.ManagementDateTimeConverter]::ToDmtfDateTime([DateTime]::Now.AddDays(-14))
 			$LoggedWarning = Get-WmiObject -computer $Target -query ("Select * from Win32_NTLogEvent Where Type='Warning' and TimeWritten >='" + $WmidtQueryDT + "'")
 			$MyReport += Get-CustomHeader "2" "WARNING Entries"
-				$MyReport += Get-HTMLTable ($LoggedWarning | Select EventCode, SourceName, @{N="Time";E={$_.ConvertToDateTime($_.TimeWritten)}}, LogFile, Message)
+			$MyReport += Get-HTMLTable ($LoggedWarning | Select EventCode, SourceName, @{N="Time";E={$_.ConvertToDateTime($_.TimeWritten)}}, LogFile, Message)
 			$MyReport += Get-CustomHeaderClose
 		$MyReport += Get-CustomHeaderClose
 		$MyReport += Get-CustomHeaderClose
@@ -456,4 +459,7 @@ Write-Output "Collating Detail for $Target"
 	$Filename = ".\" + $Target + "_" + $date.Hour + $date.Minute + "_" + $Date.Day + "-" + $Date.Month + "-" + $Date.Year + ".htm"
 	$MyReport | out-file -encoding ASCII -filepath $Filename
 	Write "Audit saved as $Filename"
+	if ($debug){
+		Get-Content $Filename | foreach {Write-Output $_}
+	}
 }
