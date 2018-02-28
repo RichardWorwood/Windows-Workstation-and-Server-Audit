@@ -459,7 +459,5 @@ Write-Output "Collating Detail for $Target"
 	$Filename = ".\" + $Target + "_" + $date.Hour + $date.Minute + "_" + $Date.Day + "-" + $Date.Month + "-" + $Date.Year + ".htm"
 	$MyReport | out-file -encoding ASCII -filepath $Filename
 	Write "Audit saved as $Filename"
-	if ($debug){
-		Get-Content $Filename | foreach {Write-Output $_}
-	}
+	Get-Content $Filename | foreach {Write-Output $_}
 }
