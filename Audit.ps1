@@ -14,7 +14,7 @@
 #    Modified by Richard Worwood to include debug   #
 #####################################################
 
-param( [string] $auditlist, [Boolean] $debug)
+param( [string] $auditlist, [bool] $debug)
 
 Function Get-CustomHTML ($Header){
 $Report = @"
